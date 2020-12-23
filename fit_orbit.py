@@ -6,7 +6,7 @@ import scipy.optimize as so
 import radiant_est
 import scam
 
-
+import OD_and_prop
 
 def get_v0(t,p):
     """
@@ -100,7 +100,7 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
     xhat=so.fmin(ss,xhat)
     xhat=so.fmin(ss,xhat)        
 
-    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.5,0.5,0.5,0.002,0.002],n_iter=10000,thin=100,debug=False)
+    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.5,0.5,0.5,0.002,0.002],n_iter=1000,thin=100,debug=False)
     mp=n.mean(chain,axis=0)
     
     plt.plot(chain[:,1])
@@ -138,7 +138,6 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
     else:
         v=n.repeat(10**mp[0],len(t))
 
-
     plt.plot(t,v/1e3)
     plt.xlabel("Time (seconds since first observation)")
     plt.ylabel("Velocity (km/s)")
@@ -157,6 +156,7 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
     vels=[]
     ras=[]
     decs=[]
+    kep_states=[]
     for ci in range(chain.shape[0]):
         par=chain[ci,:]
         vel_0s.append(10**par[0])
@@ -166,18 +166,27 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
         z=n.cos(theta)
         x=n.sin(theta)*n.cos(phi)
         y=n.sin(theta)*n.sin(phi)
-        vels.append(v0*n.array([x,y,z]))
-
+        vel=v0*n.array([x,y,z])
+        vels.append(vel)
         u0=n.array([x,y,z])
         p0 = p_est + n.array([10.0*par[3],10.0*par[4],10.0*par[5]])
         rad=radiant_est.get_radiant(p0,unix_t0,u0).icrs
         ras.append(rad.ra.deg)
         decs.append(rad.dec.deg)
+        
+        state = n.zeros((6,), dtype=n.float64)
+        state[:3] = p0
+        state[3:] = vel
+        kep_states.append(OD_and_prop.itrs_to_kep(state,unix_t0,dt=0.25))
+    kep_states=n.array(kep_states)
+        
     vels=n.array(vels)
     return(n.mean(vel_0s),n.std(vel_0s),
            n.mean(vels,axis=0),n.std(vels,axis=0),
            n.mean(ras),n.std(ras),
-           n.mean(decs),n.std(decs))
+           n.mean(decs),n.std(decs),
+           n.mean(kep_states,axis=0),n.std(kep_states,axis=0))
+
 
 
 if __name__ == "__main__":
@@ -216,7 +225,7 @@ if __name__ == "__main__":
     # non-linear fit with a first order atmospheric 
     # drag model.
     
-    rv0,rv0s,v,vs,ra,ras,dec,decs=fit_model(t,ecef,v0,p0,ecef_std,hg,t[0])
+    rv0,rv0s,v,vs,ra,ras,dec,decs,kep,kep_std=fit_model(t,ecef,v0,p0,ecef_std,hg,t[0])
 
     print("v0: %1.2f +/- %1.2f\nvx,vy,vz: %1.2f,%1.2f,%1.2f +/- %1.2f,%1.2f,%1.2f\nra,dec: %1.2f,%1.2f +/- %1.2f,%1.2f"%(rv0,rv0s,v[0],v[1],v[2],vs[0],vs[1],vs[2],ra,dec,ras,decs))
 
@@ -234,7 +243,9 @@ if __name__ == "__main__":
     ho["dec"]=dec
     ho["dec_sigma"]=decs
     ho["vel"]=v
-    ho["vel_sigma"]=vs    
+    ho["vel_sigma"]=vs
+    ho["kep"]=kep
+    ho["kep_std"]=kep_std
     ho.close()
     print(n.linalg.norm(v0))
 
@@ -249,6 +260,12 @@ if __name__ == "__main__":
 #0: 27979.86 +/- 21.56
 #vx,vy,vz: 22747.17,-8302.32,-14018.09 +/- 17.82,29.85,14.54
 #ra,dec: 76.09,30.04 +/- 0.07,0.02
+#76.20595750750215
+#30.01801055221751
+#27288.94268908626
+#v0: 27977.84 +/- 30.63
+#vx,vy,vz: 22747.06,-8299.35,-14016.08 +/- 20.22,47.06,17.61
+#ra,dec: 76.10,30.04 +/- 0.10,0.03
 #76.20595750750215
 #30.01801055221751
 #27288.94268908626
