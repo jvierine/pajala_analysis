@@ -58,7 +58,7 @@ def geometry_test(pos0=[67.365524, 26.637495],
     plt.title(title)
     print(mi)
     cb=plt.colorbar()
-    cb.set_label("Aspect angle (deg")
+    cb.set_label("Aspect angle (deg)")
     if one_way:
         plt.xlabel("One-way range (km)")
     else:
@@ -71,7 +71,12 @@ def geometry_test(pos0=[67.365524, 26.637495],
 if __name__ == "__main__":
     sod_coords=[67.365524, 26.637495]
     ski_coords=[69.3481870270324, 20.36342676479248]
+    and_coords=[69.29807478964716,16.043168307014426]
 
+    geometry_test(pos0=and_coords,pos1=and_coords,pfname="figs/and_and_aspect.png",
+                  one_way=True,
+                  title="Andenes-Andenes")
+    
     geometry_test(pos0=sod_coords,pos1=ski_coords,pfname="figs/sod_ski_aspect.png",
                   title="Sodankylä-Skibotn")
 
