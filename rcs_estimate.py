@@ -137,6 +137,7 @@ def rcs_sod(P_tx=30*4*15e3, f=36.9e6, T_sys=9000, B=77e3, K=10.5):
     n_snr=len(t)
     rcs_h=[]
     rcs=[]
+    rcs_n=[]    
     rcs_p=[]
     rcs_m=[]    
     for i in range(n_snr):
@@ -149,7 +150,17 @@ def rcs_sod(P_tx=30*4*15e3, f=36.9e6, T_sys=9000, B=77e3, K=10.5):
             noise=1.0
             signal=snr[i]
             snr_std = (signal+1.0)/n.sqrt(K)
-
+            
+            rcsn0=rcs_est(G=gain,
+                          P_tx=P_tx,
+                          lam=c.c/f,
+                          T_sys=T_sys,
+                          B=B,
+                          R=rg[i]*1e3,
+                          SNR=1.0)
+            rcs_n.append(rcsn0)
+           
+            
             rcs0=rcs_est(G=gain,
                         P_tx=P_tx,
                         lam=c.c/f,
@@ -184,6 +195,7 @@ def rcs_sod(P_tx=30*4*15e3, f=36.9e6, T_sys=9000, B=77e3, K=10.5):
     xerr[0,:]=n.abs(rcs_m-rcs)
     xerr[1,:]=n.abs(rcs_p-rcs)
     plt.errorbar(rcs,rcs_h,xerr=xerr,fmt="o")
+    plt.plot(rcs_n,rcs_h,color="gray")
  #   plt.plot(rcs_m,rcs_h)
 #    plt.plot(rcs_p,rcs_h)    
     plt.xlabel("Radar cross-section (m$^2$)")
