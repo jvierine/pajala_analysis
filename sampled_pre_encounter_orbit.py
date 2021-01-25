@@ -49,12 +49,12 @@ print(f'Using JPL kernel: {kernel}')
 
 def sample_orbit(state):
     states, massive_states, t = sorts.propagate_pre_encounter(
-        state, 
-        epoch, 
-        in_frame = 'ITRS', 
-        out_frame = 'HCRS', 
+        state,
+        epoch,
+        in_frame = 'ITRS',
+        out_frame = 'HCRS',
         termination_check = sorts.distance_termination(dAU = 0.01), #hill sphere of Earth in AU
-        kernel = kernel, 
+        kernel = kernel,
     )
 
     states_HMC = sorts.frames.convert(

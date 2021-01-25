@@ -51,7 +51,7 @@ def est_var(ecef,xhat,A):
     traj=n.dot(A,xhat)
     return(n.array([n.var(ecef[:,0]-traj[0:n_m]),n.var(ecef[:,1]-traj[n_m:(2*n_m)]),n.var(ecef[:,2]-traj[(2*n_m):(3*n_m)])]))
 
-def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
+def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
     """ 
     Nonlinear fit for trajectory 
     """
@@ -82,8 +82,13 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
     def ss(x):
         m=model(x)
         s=0.0
-        for i in range(3):
-            s+=n.sum((1.0/(2.0*ecef_std[:,i]**2.0))*n.abs(m[:,i]-p[:,i])**2.0)
+        for j in range(m.shape[0]):
+            #        for i in range(3):
+            Cinv=ecef_covs[j]
+#            print(n.dot(n.dot(m[j,:]-p[j,:],Cinv),n.transpose(m[j,:]-p[j,:])))
+            s+=n.dot(n.dot(m[j,:]-p[j,:],Cinv),n.transpose(m[j,:]-p[j,:]))
+
+#            s+=n.sum((1.0/(2.0*pstd**2.0))*n.abs(m[:,i]-p[:,i])**2.0)
 #            s+=n.sum(n.abs(m[:,i]-p[:,i])**2.0)            
         print(s)
         return(s)
@@ -156,7 +161,10 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
     vels=[]
     ras=[]
     decs=[]
-    kep_states=[]
+  #  kep_states=[]
+    ecef_states=[]
+    pos=[]
+    radecs=[]
     for ci in range(chain.shape[0]):
         par=chain[ci,:]
         vel_0s.append(10**par[0])
@@ -170,32 +178,46 @@ def fit_model(t,p,v_est,p_est,ecef_std,hg,unix_t0,use_acc=True):
         vels.append(vel)
         u0=n.array([x,y,z])
         p0 = p_est + n.array([10.0*par[3],10.0*par[4],10.0*par[5]])
+        pos.append(p0)
         rad=radiant_est.get_radiant(p0,unix_t0,u0).icrs
-        ras.append(rad.ra.deg)
-        decs.append(rad.dec.deg)
-        
+#        ras.append(rad.ra.deg)
+ #       decs.append(rad.dec.deg)
+        radecs.append(n.array([rad.ra.deg,rad.dec.deg]))
         state = n.zeros((6,), dtype=n.float64)
         state[:3] = p0
         state[3:] = vel
-        kep_states.append(OD_and_prop.itrs_to_kep(state,unix_t0,dt=0.25))
-    kep_states=n.array(kep_states)
-        
-    vels=n.array(vels)
-    return(n.mean(vel_0s),n.std(vel_0s),
-           n.mean(vels,axis=0),n.std(vels,axis=0),
-           n.mean(ras),n.std(ras),
-           n.mean(decs),n.std(decs),
-           n.mean(kep_states,axis=0),n.std(kep_states,axis=0))
+        ecef_states.append(state)
+    ecef_states=n.array(ecef_states)
+    radecs=n.array(radecs)    
+    
+    return(n.mean(ecef_states,axis=0),
+           n.cov(n.transpose(ecef_states)),
+           n.mean(radecs),
+           n.cov(n.transpose(radecs)))
+
+#           n.mean(kep_states,axis=0),
+ #          n.std(kep_states,axis=0))
 
 
 
 if __name__ == "__main__":
     # read trajectory determined using cameras
-    h=h5py.File("camera_data/2020-12-04-trajectory_std.h5","r")
+    h=h5py.File("camera_data/trajectory2.h5","r")
 
     # itrs pos
     ecef=n.copy(h[("ecef_pos_m")])
     ecef_std=n.copy(h[("ecef_pos_std")])
+
+    ecef_samples=n.copy(h[("ecef_samples")])
+
+    ecef_covs=[]
+    # estimate position error covariance
+    for i in range(ecef_samples.shape[1]):
+        ecef_covs.append(n.linalg.inv(n.cov(n.transpose(ecef_samples[:,i,:]))))
+
+    
+
+    
     # height
     hg=n.copy(h[("h_km_wgs84")])
     # unix time
@@ -215,39 +237,26 @@ if __name__ == "__main__":
     # Estimate variance of ITRS position measurements based on
     # residuals of initial fit
     #
-    # It is important to make sure all measurements
-    # are uncorrelated, or that their correlations
-    # are correctly modeled!
-#    sigma2=100.0*est_var(ecef,xhat,A)
- #   print("Stdev:")
-  #  print(n.sqrt(sigma2))
 
     # non-linear fit with a first order atmospheric 
     # drag model.
     
-    rv0,rv0s,v,vs,ra,ras,dec,decs,kep,kep_std=fit_model(t,ecef,v0,p0,ecef_std,hg,t[0])
-
-    print("v0: %1.2f +/- %1.2f\nvx,vy,vz: %1.2f,%1.2f,%1.2f +/- %1.2f,%1.2f,%1.2f\nra,dec: %1.2f,%1.2f +/- %1.2f,%1.2f"%(rv0,rv0s,v[0],v[1],v[2],vs[0],vs[1],vs[2],ra,dec,ras,decs))
+    state,state_cov,radec,radec_cov=fit_model(t,ecef,v0,p0,ecef_covs,hg,t[0])
+    
+#    print("v0: %1.2f +/- %1.2f\nvx,vy,vz: %1.2f,%1.2f,%1.2f +/- %1.2f,%1.2f,%1.2f\nra,dec: %1.2f,%1.2f +/- %1.2f,%1.2f"%(rv0,rv0s,v[0],v[1],v[2],vs[0],vs[1],vs[2],ra,dec,ras,decs))
 
     print(re0.icrs.ra.deg)
     print(re0.icrs.dec.deg)
     
-    
     ho=h5py.File("state_vector/v_ecef.h5","w")
-    ho["v0"]=rv0
-    ho["v0_sigma"]=rv0s
-    ho["p0"]=p0
+    ho["state_ecef"]=state
+    ho["state_ecef_cov"]=state_cov
+    ho["state_ecef_std"]=n.sqrt(n.diag(state_cov))
     ho["t0"]=t[0]
-    ho["ra"]=ra
-    ho["ra_sigma"]=ras    
-    ho["dec"]=dec
-    ho["dec_sigma"]=decs
-    ho["vel"]=v
-    ho["vel_sigma"]=vs
-    ho["kep"]=kep
-    ho["kep_std"]=kep_std
+    ho["radec"]=radec
+    ho["radec_cov"]=radec_cov
     ho.close()
-    print(n.linalg.norm(v0))
+#    print(n.linalg.norm(v0))
 
 
 

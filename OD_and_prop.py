@@ -9,7 +9,7 @@ import scipy.constants as c
 import sorts
 import pyorb
 import numpy as n
-
+from datetime import datetime
 
 import rebound
     
@@ -124,7 +124,7 @@ def rebound_stuff():
     ),
     )
     prop.orb_el=True
-    states,mob_states = prop.propagate([-365.24*24*3600,-2*31.0*24*3600,-31.0*24*3600,-24*3600,-3600,-60,0], state_helio, epoch)
+    states,mob_states = prop.propagate([-365.25*24*3600,-2*31.0*24*3600,-31.0*24*3600,-24*3600,-3600,-60,0], state_helio, epoch)
     print(state_helio)
     print(states)
 #    exit(0)
@@ -184,34 +184,83 @@ def rebound_stuff2():
     ho.close()
     state = np.zeros((6,), dtype=np.float64)
 
+    print(t0)
+    date0=datetime.fromtimestamp(float(t0))
+    print(date0)
+
     state[:3] = p0
     state[3:] = v0
     print(state)
     print(state)
     
     kep_state,state_helio = itrs_to_kep(state,t0)
+    
     print(state_helio)
     epoch=Time(t0,scale="utc",format="unix")
     print(epoch)
 
     state_helio=state_helio.flatten()
     sim = rebound.Simulation()
+    sim.integrator="IAS15"
     sim.units=("s","m","kg")
-    sim.add("Sun")
-    sim.add("Earth")    
-    sim.add("Jupiter")
-    sim.add("Saturn")
+    objs=["Sun","Mercury","Venus","399","301","Mars","Jupiter","Saturn","Neptune","Uranus"]
+    for o in objs:
+        sim.add(o,date=date0)
+#    sim.add("399",date=date0)    # Earth not Earth-Moon barycenter
+ #   sim.add("301",date=date0)    # Moon not Earth-Moon barycenter    
+  #  sim.add("Jupiter",date=date0)
+   # sim.add("Saturn",date=date0)
+#    sim.add("Mercury",date=date0)
+ #   sim.add("Venus",date=date0)
+  #  sim.add("Mars",date=date0)            
     sim.status()
-    print(sim.units)    
-    sim.add(m=10.0,x=state_helio[0],y=state_helio[1],z=state_helio[2],
-            vx=state_helio[3],vy=state_helio[4],vz=state_helio[5])
-            
-    for orbit in sim.calculate_orbits():
-        print(orbit)
 
-    #sim.add("Churyumov-Gerasimenko")
-#    sim.add("NAME=Churyumov-Gerasimenko; CAP")
-    fig = rebound.OrbitPlot(sim, unitlabel="[m]")
+    sim.integrate(0)
+    sun = sim.particles[0]
+    sunx = sun.x
+    suny = sun.y
+    sunz = sun.z    
+    
+    print(sim.units)
+    
+    sim.add(m=10.0,
+            x=state_helio[0]+sunx,
+            y=state_helio[1]+suny,
+            z=state_helio[2]+sunz,
+            vx=state_helio[3],
+            vy=state_helio[4],
+            vz=state_helio[5])
+
+#    tint=n.linspace(-365.25*24*3600.0,0.0,num=1000)
+    tint=n.linspace(-16.22*3600.0,0.0,num=100)    
+    n_t=len(tint)
+    n_p=len(objs)+1
+    states=n.zeros([n_p,6,n_t])
+    for ti,t in enumerate(tint):
+        sim.integrate(tint[ti])
+        if ti == 0:
+            print(sim.particles[10].calculate_orbit(primary=sim.particles[0]))
+        for pi in range(n_p):
+            particle = sim.particles[pi]
+            states[pi,0,ti] = particle.x
+            states[pi,1,ti] = particle.y
+            states[pi,2,ti] = particle.z
+            states[pi,3,ti] = particle.vx
+            states[pi,4,ti] = particle.vy
+            states[pi,5,ti] = particle.vz
+
+    for pi in range(n_p):
+        plt.plot(states[pi,0,:],states[pi,1,:])
     plt.show()
-rebound_stuff()    
-#rebound_stuff2()
+
+if __name__ == "__main__":
+    #rebound_stuff()    
+    rebound_stuff2()
+
+# HCRS - 
+# ICRS - J2000
+
+# horizons
+# a=371276236337.00165 e=0.808617577870379 inc=0.05736646654651799 Omega=-1.8749929832045504 omega=-1.4116033510149235 f=3.4063525796783765
+# sorts / spice
+# rebound.Orbit instance, a=317615955100.4286 e=0.7927906005014076 inc=0.027404859865279987 Omega=-1.8749591158831866 omega=-1.3163384839219365 f=3.3118356063499084>
