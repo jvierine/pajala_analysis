@@ -4,6 +4,8 @@ import h5py
 import pyglow
 from datetime import datetime
 import scipy.interpolate as si
+import scipy.optimize as sio
+
 def rho_a(h):
     lat=69.0
     lon=19.0
@@ -15,6 +17,7 @@ def rho_a(h):
         pt=pyglow.Point(dn,lat,lon,h[i])
         pt.run_msis()
         rho[i]=pt.rho*1e6/1e3
+
     return(rho)
     
 
@@ -34,6 +37,26 @@ def dyn_mass0(rhoa,v,a,A=1.209,gamma=1.0,rho_m=3000.0):
     return(m_d)
 
 # https://www.meteornews.net/2018/04/02/detailed-analysis-of-the-fireball-20160317_031654-over-united-kingdom/
+def fit_exp(rho,hg):
+    def model(x):
+        a0=10**x[0]
+        a1=10**x[1]        
+        h0=10**x[2]
+        return(a0*n.exp(-a1*(hg-h0)))
+    def ss(x):
+        m=model(x)
+        s=n.sum(n.abs(rho-m)**2.0)
+        print(s)
+        return(s)
+    #    a0*n.exp(-a1*(60-60)) = 1e-4
+    #    1e-4*n.exp(-a1*(
+    xhat=sio.fmin(ss,[-4,1.0,n.log10(60)])
+    #    plt.plot(model(xhat),hg)
+    #   plt.plot(rho,hg,".")
+    #  plt.show()
+    return(model(xhat))
+
+    
 
 
 
@@ -48,18 +71,25 @@ md4s=[]
 md2s=[]
 md1s=[]
 plot=False
-for i in range(200):
+rhoa=rho_a(hg)
+#rhoaf=fit_exp(rhoa,hg)
+#plt.plot(rhoaf,hg)
+#plt.plot(rhoa,hg,".")
+#plt.show()
+print(v.shape)
+for i in range(v.shape[0]):
     a = -dp[i,0]*n.exp(dp[i,1]*t)
-    md_4=dyn_mass0(rho_a(hg),v[i,:],a,rho_m=4000.0)    
-    md_2=dyn_mass0(rho_a(hg),v[i,:],a,rho_m=2000.0)
-    md_1=dyn_mass0(rho_a(hg),v[i,:],a,rho_m=1000.0)
-    md4s.append(md_4)
-    md2s.append(md_2)
-    md1s.append(md_1)
+    md_4=dyn_mass0(rhoa,v[i,:],a,rho_m=4000.0)    
+    md_2=dyn_mass0(rhoa,v[i,:],a,rho_m=2000.0)
+    md_1=dyn_mass0(rhoa,v[i,:],a,rho_m=1000.0)
+    
+    md4s.append(n.max(md_4))
+    md2s.append(n.max(md_2))
+    md1s.append(n.max(md_1))
     if plot:
         plt.plot(md_1,hg,alpha=0.2,color="C0",label="1 g/cm$^3$")
-        plt.plot(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
-        plt.plot(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
+#        plt.plot(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
+ #       plt.plot(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
 
 print("4000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md4s),n.std(md4s)))
 print("2000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md2s),n.std(md2s)))

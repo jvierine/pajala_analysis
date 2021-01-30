@@ -1,0 +1,6 @@
+\begindata
+
+KERNELS_TO_LOAD = ( '/media/j/4f5bab17-2890-4bb0-aaa8-ea42d65fdac8/spice/de430.bsp')
+   \begintext
+
+

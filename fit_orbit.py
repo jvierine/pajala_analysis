@@ -105,7 +105,31 @@ def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
     xhat=so.fmin(ss,xhat)
     xhat=so.fmin(ss,xhat)        
 
-    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.5,0.5,0.5,0.002,0.002],n_iter=1000,thin=100,debug=False)
+    # estimate linearized errors
+    dx=1e-5
+    m0=model(xhat)
+    n_par=6
+    n_meas=p.shape[0]*p.shape[1]
+    J=n.zeros([p.shape[0]*p.shape[1],n_par])
+    S=n.zeros([n_meas,n_meas])
+    for i in range(n_par):
+        x0 = n.copy(xhat)
+        x0[i]+=dx
+        m1=model(x0)
+        mi=0
+        for j in range(p.shape[0]):
+            for k in range(p.shape[1]):
+                J[mi,i]=(m1[j,k]-m0[j,k])/dx
+                C=n.linalg.inv(ecef_covs[j])
+                S[mi,mi]=1.0/n.max(n.diag(C))
+                mi+=1
+    Sigmap = n.linalg.inv(n.dot(n.dot(n.transpose(J),S),J))
+    par_std=n.sqrt(n.diag(Sigmap))
+    par_std[0]=10**par_std[0]
+#    print(Sigmap)
+    print(par_std)
+    
+    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.15,0.15,0.15,0.002,0.002],n_iter=10000,thin=100,debug=False)
     mp=n.mean(chain,axis=0)
     
     plt.plot(chain[:,1])
@@ -165,8 +189,22 @@ def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
     ecef_states=[]
     pos=[]
     radecs=[]
+
+    chain_vels=[]
+    dec_pars=[]    
+    
     for ci in range(chain.shape[0]):
         par=chain[ci,:]
+
+        xv0=10**par[0]
+        xv1=10**par[6]
+        xa1=10**par[7]
+        xa0=(xv1-xv0)/n.exp(xa1*n.max(t))
+        xv = xv0-xa0*n.exp(xa1*t)
+        
+        chain_vels.append(xv)
+        dec_pars.append(n.array([xa0,xa1]))
+        
         vel_0s.append(10**par[0])
         theta=par[1]
         phi=par[2]
@@ -188,12 +226,21 @@ def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
         state[3:] = vel
         ecef_states.append(state)
     ecef_states=n.array(ecef_states)
-    radecs=n.array(radecs)    
+    radecs=n.array(radecs)
+    vel_0s=n.array(vel_0s)
     
     return(n.mean(ecef_states,axis=0),
            n.cov(n.transpose(ecef_states)),
-           n.mean(radecs),
-           n.cov(n.transpose(radecs)))
+           n.mean(radecs,axis=0),
+           n.cov(n.transpose(radecs)),
+           n.mean(vel_0s),
+           n.std(vel_0s),
+           chain_vels,
+           t,
+           dec_pars)
+
+
+
 
 #           n.mean(kep_states,axis=0),
  #          n.std(kep_states,axis=0))
@@ -214,9 +261,6 @@ if __name__ == "__main__":
     # estimate position error covariance
     for i in range(ecef_samples.shape[1]):
         ecef_covs.append(n.linalg.inv(n.cov(n.transpose(ecef_samples[:,i,:]))))
-
-    
-
     
     # height
     hg=n.copy(h[("h_km_wgs84")])
@@ -241,12 +285,18 @@ if __name__ == "__main__":
     # non-linear fit with a first order atmospheric 
     # drag model.
     
-    state,state_cov,radec,radec_cov=fit_model(t,ecef,v0,p0,ecef_covs,hg,t[0])
+    state,state_cov,radec,radec_cov,v0,v0_std,vels,ct,dp=fit_model(t,ecef,v0,p0,ecef_covs,hg,t[0])
     
 #    print("v0: %1.2f +/- %1.2f\nvx,vy,vz: %1.2f,%1.2f,%1.2f +/- %1.2f,%1.2f,%1.2f\nra,dec: %1.2f,%1.2f +/- %1.2f,%1.2f"%(rv0,rv0s,v[0],v[1],v[2],vs[0],vs[1],vs[2],ra,dec,ras,decs))
 
     print(re0.icrs.ra.deg)
     print(re0.icrs.dec.deg)
+    ho=h5py.File("state_vector/chain.h5","w")
+    ho["vels"]=vels
+    ho["t"]=ct
+    ho["h_km"]=hg
+    ho["dp"]=dp    
+    ho.close()
     
     ho=h5py.File("state_vector/v_ecef.h5","w")
     ho["state_ecef"]=state
@@ -255,6 +305,8 @@ if __name__ == "__main__":
     ho["t0"]=t[0]
     ho["radec"]=radec
     ho["radec_cov"]=radec_cov
+    ho["v0"]=v0
+    ho["v0_std"]=v0_std
     ho.close()
 #    print(n.linalg.norm(v0))
 

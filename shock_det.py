@@ -61,11 +61,11 @@ def extract_frames(odir="/media/j/4f5bab17-2890-4bb0-aaa8-ea42d65fdac8/bolide_20
 
     ski_p = jcoord.geodetic2ecef(sc.ski_coords[0],sc.ski_coords[1],sc.ski_coords[2])
 
-    cal=sio.loadmat("azzeSorSki.mat")
+    cal=sio.loadmat("camera_data/azzeSorSki.mat")
             
     for fi in range(len(fl)):
         if fi > i0:
-            tnow = fi*dt + t0 - dt
+            tnow = fi*dt + t0 - dtau
             fname="%s/frame-%06d.h5"%(odir,fi)
             print(fname)
             h=h5py.File(fname,"r")
@@ -76,38 +76,38 @@ def extract_frames(odir="/media/j/4f5bab17-2890-4bb0-aaa8-ea42d65fdac8/bolide_20
 
             R=n.linalg.norm(ski_p-n.array([tx(tnow),ty(tnow),tz(tnow)]))
 
-            idxm=300
+            idxm=200
             idxp=100
-            idym=70
-            idyp=70
+            idym=80
+            idyp=80
 
             # center pos
-            zes_ski = cal["zeSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)))]
-            azs_ski = cal["azSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)))]
+            zes_ski = 180.0*cal["zeSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)))]/n.pi
+            azs_ski = 180.0*cal["azSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)))]/n.pi
             llh=jcoord.az_el_r2geodetic(sc.ski_coords[0], sc.ski_coords[1],sc.ski_coords[2], azs_ski, 90-zes_ski, R)
             p_center=jcoord.geodetic2ecef(llh[0],llh[1],llh[2])
             
             # left pos
-            zes_ski = cal["zeSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)-idxm))]
-            azs_ski = cal["azSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)-idxm))]
+            zes_ski = 180.0*cal["zeSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)-idxm))]/n.pi
+            azs_ski = 180.0*cal["azSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)-idxm))]/n.pi
             llh=jcoord.az_el_r2geodetic(sc.ski_coords[0], sc.ski_coords[1],sc.ski_coords[2], azs_ski, 90-zes_ski, R)
             p_left=jcoord.geodetic2ecef(llh[0],llh[1],llh[2])
 
             # right pos
-            zes_ski = cal["zeSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)+idxp))]
-            azs_ski = cal["azSki"][int(n.round(ski_yf(tnow))),int(n.round(ski_xf(tnow)+idxp))]
+            zes_ski = 180.0*cal["zeSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)+idxp))]/n.pi
+            azs_ski = 180.0*cal["azSki"][int(n.round(ski_yf(tnow+dtau))),int(n.round(ski_xf(tnow+dtau)+idxp))]/n.pi
             llh=jcoord.az_el_r2geodetic(sc.ski_coords[0], sc.ski_coords[1],sc.ski_coords[2], azs_ski, 90-zes_ski, R)
             p_right=jcoord.geodetic2ecef(llh[0],llh[1],llh[2])
 
             # top pos
-            zes_ski = cal["zeSki"][int(n.round(ski_yf(tnow)+idyp)),int(n.round(ski_xf(tnow)))]
-            azs_ski = cal["azSki"][int(n.round(ski_yf(tnow)+idyp)),int(n.round(ski_xf(tnow)))]
+            zes_ski = 180.0*cal["zeSki"][int(n.round(ski_yf(tnow+dtau)+idyp)),int(n.round(ski_xf(tnow+dtau)))]/n.pi
+            azs_ski = 180.0*cal["azSki"][int(n.round(ski_yf(tnow+dtau)+idyp)),int(n.round(ski_xf(tnow+dtau)))]/n.pi
             llh=jcoord.az_el_r2geodetic(sc.ski_coords[0], sc.ski_coords[1],sc.ski_coords[2], azs_ski, 90-zes_ski, R)
             p_top=jcoord.geodetic2ecef(llh[0],llh[1],llh[2])
 
             # bottom pos
-            zes_ski = cal["zeSki"][int(n.round(ski_yf(tnow)-idym)),int(n.round(ski_xf(tnow)))]
-            azs_ski = cal["azSki"][int(n.round(ski_yf(tnow)-idym)),int(n.round(ski_xf(tnow)))]
+            zes_ski = 180.0*cal["zeSki"][int(n.round(ski_yf(tnow+dtau)-idym)),int(n.round(ski_xf(tnow+dtau)))]/n.pi
+            azs_ski = 180.0*cal["azSki"][int(n.round(ski_yf(tnow+dtau)-idym)),int(n.round(ski_xf(tnow+dtau)))]/n.pi
             llh=jcoord.az_el_r2geodetic(sc.ski_coords[0], sc.ski_coords[1],sc.ski_coords[2], azs_ski, 90-zes_ski, R)
             p_bottom=jcoord.geodetic2ecef(llh[0],llh[1],llh[2])
             
@@ -116,12 +116,15 @@ def extract_frames(odir="/media/j/4f5bab17-2890-4bb0-aaa8-ea42d65fdac8/bolide_20
             
             top_d=n.linalg.norm(p_center-p_top)
             bottom_d=n.linalg.norm(p_center-p_bottom)            
+
             
-            plt.imshow(I,cmap="gray",vmin=bg,aspect="auto",extent=[left_d,right_d,bottom_d,top_d])            
+            plt.imshow(I[int(ski_yf(tnow+dtau)-idym):int(ski_yf(tnow+dtau)+idyp),int(ski_xf(tnow+dtau)-idxm):int(ski_xf(tnow+dtau)+idxp)],cmap="gray",vmin=bg,vmax=400,aspect="auto",extent=[-left_d,right_d,-bottom_d,top_d])            
             plt.title("%s R=%1.2f km"%(stuffr.unix2datestr(tnow),R/1e3))
             plt.colorbar()
-            plt.xlim([ski_xf(tnow)-300,ski_xf(tnow)+100])
-            plt.ylim([ski_yf(tnow)-70,ski_yf(tnow)+70])            
+            plt.xlabel("Distance (m)")
+            plt.ylabel("Distance (m)")     
+#            plt.xlim([ski_xf(tnow)-300,ski_xf(tnow)+100])
+ #           plt.ylim([ski_yf(tnow)-70,ski_yf(tnow)+70])            
             plt.show()
 
 

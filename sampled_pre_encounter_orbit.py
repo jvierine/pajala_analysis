@@ -77,6 +77,7 @@ def sample_orbit(state):
 
 samples = []
 f_samples=[]
+T_samples=[]
 for i in tqdm(range(num)):
     dstate = state.copy()
 #    dstate[3:] += np.random.randn(3)*vel_stds
@@ -85,17 +86,26 @@ for i in tqdm(range(num)):
     samples.append((t,kep))
 #    print(kep.shape)
  #   print(kep[:,-1])
+
     kep0=np.copy(kep)
     kep0[0,-1]=kep0[0,-1]/pyorb.AU
+    
+    a_obj=kep0[0,-1]
+    a_J=5.2044 
+    
+    T_p = (a_J/a_obj)+2.0*np.cos(np.pi*kep0[2,-1]/180.0)*np.sqrt( (a_obj/a_J)*(1-kep0[1,-1]**2.0) )    
     f_samples.append(kep0[:,-1])
+    T_samples.append(T_p)
 f_samples=np.array(f_samples)
-
+T_samples=np.array(T_samples)
 print("Mean")
 print(np.mean(f_samples,axis=0))
 print("Cov")
 print(np.cov(np.transpose(f_samples)))
 print("Std")
 print(np.sqrt(np.diag(np.cov(np.transpose(f_samples)))))
+print("Tisserand")
+print("%1.3f +/- %1.3f"%(np.mean(T_samples),np.std(T_samples)))
 
 plt.rc('text', usetex=True)
 

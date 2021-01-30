@@ -141,7 +141,7 @@ def fit_line(lat,
 
 
 if __name__ == "__main__":    
-        h=h5py.File("data/2020-12-04-meter_radar.h5","r")
+        h=h5py.File("sod_data/2020-12-04-sod_meteor_radar.h5","r")
 
         p0,p1,gidx=fit_line(n.copy(h[("lat_deg")]),n.copy(h[("lon_deg")]),n.copy(h[("height_km")]))
         uvec=p0-p1
