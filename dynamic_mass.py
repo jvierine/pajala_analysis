@@ -33,7 +33,7 @@ def dyn_mass0(rhoa,v,a,A=1.209,gamma=1.0,rho_m=3000.0):
 #    m_d = -((gamma*A)**3.0/rho_m**2.0)*(rhoa*v**2.0)**3.0/a**3.0
     #A=15*L**2.0
     #m=30.0*rho_m*L**3.0
-    m_d = -(3.75/rho_m)*(rhoa*v**2.0/(2.0*a))**3.0
+    m_d = -(3.75/rho_m**2.0)*(rhoa*v**2.0/(2.0*a))**3.0
     return(m_d)
 
 # https://www.meteornews.net/2018/04/02/detailed-analysis-of-the-fireball-20160317_031654-over-united-kingdom/
@@ -70,14 +70,15 @@ h.close()
 md4s=[]
 md2s=[]
 md1s=[]
-plot=False
+plot=True
 rhoa=rho_a(hg)
 #rhoaf=fit_exp(rhoa,hg)
 #plt.plot(rhoaf,hg)
 #plt.plot(rhoa,hg,".")
 #plt.show()
 print(v.shape)
-for i in range(v.shape[0]):
+#for i in range(v.shape[0]):
+for i in range(100):    
     a = -dp[i,0]*n.exp(dp[i,1]*t)
     md_4=dyn_mass0(rhoa,v[i,:],a,rho_m=4000.0)    
     md_2=dyn_mass0(rhoa,v[i,:],a,rho_m=2000.0)
@@ -88,8 +89,8 @@ for i in range(v.shape[0]):
     md1s.append(n.max(md_1))
     if plot:
         plt.plot(md_1,hg,alpha=0.2,color="C0",label="1 g/cm$^3$")
-#        plt.plot(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
- #       plt.plot(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
+        plt.plot(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
+        plt.plot(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
 
 print("4000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md4s),n.std(md4s)))
 print("2000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md2s),n.std(md2s)))
