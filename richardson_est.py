@@ -20,7 +20,6 @@ def rho_a(h):
 
     return(rho)
 
-
 h=h5py.File("wind/hor_wind.h5","r")
 print(h.keys())
 hgt=n.copy(h["hgt"][()])
@@ -35,35 +34,45 @@ zonal_std=zonal_std[gidx]
 meridional=meridional[gidx]
 meridional_std=meridional_std[gidx]
 
-gidx=n.where( (hgt < 93.5) | (hgt > 94.5) )[0]
-meridional=meridional[gidx]
-meridional_std=meridional_std[gidx]
+#gidx=n.where( (hgt < 93.5) | (hgt > 94.5) )[0]
+#meridional=meridional[gidx]
+#meridional_std=meridional_std[gidx]
 
-
-zp=n.polyfit(hgt,zonal,6)
+zp=n.polyfit(hgt*1e3,zonal,50)
 zf=n.poly1d(zp)
-mp=n.polyfit(hgt[gidx],meridional,6)
+mp=n.polyfit(hgt*1e3,meridional,50)
 mf=n.poly1d(mp)
 
 du_dz = n.zeros(len(hgt))
-dz=0.1
-for hi in range(len(hgt)):
-    du_dz = n.sqrt( (0.5 * ((zf(hgt+dz)-zf(hgt))/dz + (zf(hgt)-zf(hgt-dz))/dz))**2.0 + (0.5 * ((mf(hgt+dz)-mf(hgt))/dz + (mf(hgt)-mf(hgt-dz))/dz))**2.0)
+dz=100.0
+du_dz = n.sqrt( ((zf(hgt*1e3+0.5*dz)-zf(hgt*1e3-0.5*dz))/dz)**2.0 + ( (mf(hgt*1e3+0.5*dz)-mf(hgt*1e3-0.5*dz))/dz)**2.0)
 
+ihgt=n.copy(hgt)
+ihgt[0]=ihgt[0]-10.0
+ihgt[-1]=ihgt[-1]+10.0
+zf=si.interp1d(ihgt*1e3,zonal)
+mf=si.interp1d(ihgt*1e3,meridional)
+du_dz = n.sqrt( ((zf(hgt*1e3+0.5*dz)-zf(hgt*1e3-0.5*dz))/dz)**2.0 + ( (mf(hgt*1e3+0.5*dz)-mf(hgt*1e3-0.5*dz))/dz)**2.0)
+
+N_max=(2.0*n.pi/(4*60.0))
 if True:
     plt.errorbar(zonal,hgt,xerr=zonal_std,fmt="o",color="C0",label="Zonal ($u$)")
-    plt.plot(zf(hgt),hgt,color="C0")
+    plt.plot(zf(hgt*1e3),hgt,color="C0")
 
     
-    plt.errorbar(meridional,hgt[gidx],xerr=meridional_std,fmt="o",color="C1",label="Meridional ($v$)")
-    plt.plot(mf(hgt),hgt,color="C1")
-    plt.plot(du_dz,hgt,color="C2",label="$\sqrt{(\partial_z u)^2 + (\partial_z v)^2}$ [m/s/km]")
+    plt.errorbar(meridional,hgt,xerr=meridional_std,fmt="o",color="C1",label="Meridional ($v$)")
+    plt.plot(mf(hgt*1e3),hgt,color="C1")
+    plt.plot(du_dz*1e3,hgt,color="C2",label="$\sqrt{(\partial_z u_h)^2}$")
+    plt.plot(10.0*N_max**2.0/(du_dz)**2.0,hgt,color="C3",label="$10 \\times \mathrm{Ri}$")
     plt.legend()
     plt.xlabel("Velocity (m/s)")
     plt.ylabel("Height (km)")
+
+    plt.grid()
     plt.tight_layout()
+    plt.xlim([-80,80])    
     plt.savefig("figs/hor_shear.png")
-#    plt.ylim([90,95])
+
     plt.show()
 
 dz=6e3
@@ -78,7 +87,9 @@ rho9=rho_a(n.array([92]))
 #print(rhos)
 #print((9.81/rho9[0])*(dr_dz/du_dz2))
 
-N_max=(1.0/(4*60.0))
+
 
 plt.plot(N_max**2.0/(du_dz/1e3)**2.0,hgt,".")
+plt.ylabel("Height (km)")
+plt.xlabel("Richardson number (10x)")
 plt.show()

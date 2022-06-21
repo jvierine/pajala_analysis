@@ -1,3 +1,9 @@
+import matplotlib
+
+SMALL_SIZE = 14
+matplotlib.rc('font', size=SMALL_SIZE)
+matplotlib.rc('axes', titlesize=SMALL_SIZE)
+
 import h5py
 import glob
 import numpy as n

@@ -16,8 +16,8 @@ def rho_a(h):
     for i in range(nh):
         pt=pyglow.Point(dn,lat,lon,h[i])
         pt.run_msis()
-        rho[i]=pt.rho*1e6/1e3
-
+        # g/cm^3 to kg/m^3
+        rho[i]=pt.rho*1e3
     return(rho)
     
 
@@ -30,10 +30,8 @@ def dyn_mass0(rhoa,v,a,A=1.209,gamma=1.0,rho_m=3000.0):
      Halliday 1996 / Gritsevich 2008
     initial guess
     """
-#    m_d = -((gamma*A)**3.0/rho_m**2.0)*(rhoa*v**2.0)**3.0/a**3.0
-    #A=15*L**2.0
-    #m=30.0*rho_m*L**3.0
-    m_d = -(3.75/rho_m**2.0)*(rhoa*v**2.0/(2.0*a))**3.0
+    # 2L x 3L x 5L brick
+    m_d = -(3.75/rho_m**2.0)*( (rhoa*v**2.0)/ (2.0*a))**3.0
     return(m_d)
 
 # https://www.meteornews.net/2018/04/02/detailed-analysis-of-the-fireball-20160317_031654-over-united-kingdom/
@@ -73,28 +71,29 @@ md1s=[]
 plot=True
 rhoa=rho_a(hg)
 #rhoaf=fit_exp(rhoa,hg)
-#plt.plot(rhoaf,hg)
+#¤plt.plot(rhoaf,hg)
 #plt.plot(rhoa,hg,".")
 #plt.show()
-print(v.shape)
+
+#print(v.shape)
 #for i in range(v.shape[0]):
-for i in range(100):    
+for i in range(200):    
     a = -dp[i,0]*n.exp(dp[i,1]*t)
     md_4=dyn_mass0(rhoa,v[i,:],a,rho_m=4000.0)    
     md_2=dyn_mass0(rhoa,v[i,:],a,rho_m=2000.0)
-    md_1=dyn_mass0(rhoa,v[i,:],a,rho_m=1000.0)
+    md_1=dyn_mass0(rhoa,v[i,:],a,rho_m=600.0)
     
     md4s.append(n.max(md_4))
     md2s.append(n.max(md_2))
     md1s.append(n.max(md_1))
     if plot:
-        plt.plot(md_1,hg,alpha=0.2,color="C0",label="1 g/cm$^3$")
-        plt.plot(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
-        plt.plot(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
+        plt.semilogx(md_1,hg,alpha=0.2,color="C0",label="1 g/cm$^3$")
+        plt.semilogx(md_2,hg,alpha=0.2,color="C1",label="2 g/cm$^3$")
+        plt.semilogx(md_4,hg,alpha=0.2,color="C2",label="4 g/cm$^3$")    
 
-print("4000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md4s),n.std(md4s)))
-print("2000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md2s),n.std(md2s)))
-print("1000 kg/m^3 %1.2f +/- %1.2f"%(n.mean(md1s),n.std(md1s)))
+print("4000 kg/m^3 %1.3f +/- %1.4f [%1.2g,%1.2g]"%(n.mean(md4s),n.std(md4s),n.min(md4s),n.max(md4s)))
+print("2000 kg/m^3 %1.3f +/- %1.4f [%1.2g,%1.2g]"%(n.mean(md2s),n.std(md2s),n.min(md2s),n.max(md2s)))
+print("600 kg/m^3 %1.3f +/- %1.4f [%1.2g,%1.2g]"%(n.mean(md1s),n.std(md1s),n.min(md1s),n.max(md1s)))
 #    plt.plot(4.0*dyn_mass0(rho_a(hg),v[i,:],a,rho_m=800.0),hg,alpha=0.2,color="gray")
  #   plt.plot(1.25*dyn_mass0(rho_a(hg),v[i,:],a,rho_m=4000.0),hg,alpha=0.2,color="red")
 if plot:
