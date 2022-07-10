@@ -30,6 +30,8 @@ def obs_map(L=4e3,
     and_p=jcoord.geodetic2ecef(stc.and_coords[0], stc.and_coords[1], stc.and_coords[2])
     sor_p=jcoord.geodetic2ecef(stc.sor_coords[0], stc.sor_coords[1], stc.sor_coords[2])
 
+
+
     mid_p = 0.5*(ski_p + sod_p)
     mid_llh=jcoord.ecef2geodetic(mid_p[0],mid_p[1],mid_p[2])
     
@@ -99,7 +101,12 @@ def obs_map(L=4e3,
     xlat,ylon=m(inf_lon,inf_lat)
     m.scatter(xlat,ylon,marker="D",label="Infrasound",color="orange",edgecolor="black",linewidth=1,zorder=2)
 
-    # sodankylä bearing
+    kai_lon = [stc.kai_coords[1]]
+    kai_lat = [stc.kai_coords[0]]
+    xlat,ylon=m(kai_lon,kai_lat)
+    m.scatter(xlat,ylon,marker="D",label="Radio telescope",color="green",edgecolor="black",linewidth=1,zorder=2)
+    
+    # sodankyla bearing
     llh_is=jcoord.az_el_r2geodetic(stc.sod_coords[0],stc.sod_coords[1], 0.0, 315.0, 0.0, 600e3)
     xlat,ylon=m([stc.sod_coords[1],llh_is[1]],[stc.sod_coords[0],llh_is[0]])
     m.plot(xlat,ylon,color="orange",zorder=1)
