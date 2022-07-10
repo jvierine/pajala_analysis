@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.rcParams.update({"font.size":16})
 import h5py
 import numpy as n
 import matplotlib.pyplot as plt
@@ -68,9 +70,9 @@ def time_freq():
     print("error variance")
     print(n.sqrt(n.diag(errvar*n.linalg.inv(n.dot(A.T,A)))))
     
-    plt.loglog(d[:,0],model(xhat))
-    plt.loglog(d[:,0],d[:,1],".")
-    plt.show()
+#    plt.loglog(d[:,0],model(xhat))
+ #   plt.loglog(d[:,0],d[:,1],".")
+  #  plt.show()
     print(xhat)
 
     
@@ -91,7 +93,7 @@ snrs=h["SNR"][()]
 freqs=h["freqs"][()]
 
 idx=n.where( (rgs > 420) & (rgs < 460) ) [0]
-fig = plt.figure()
+fig = plt.figure(figsize=(8,6.4))
 
 
 t0=stuffr.date2unix(2020,12,4,13,30,38)
@@ -99,14 +101,15 @@ print(len(rgs))
 print(len(freqs))
 print(len(times))
 S=n.max(snrs[:,idx,:],axis=1)
-plt.pcolormesh(times-t0,freqs,10.0*n.log10(S.T),vmin=0,vmax=20)
-plt.plot(tfd[:,0],tfd[:,1],"+",color="white",alpha=0.8)
+plt.pcolormesh(times-t0,freqs,10.0*n.log10(S.T),vmin=0,vmax=20,cmap="gray")
+cb=plt.colorbar()
+plt.scatter(tfd[:,0],tfd[:,1],c="blue",alpha=1.0)
 plt.ylim([1,16])
 plt.xlim([-500,6000])
 #plt.xscale("log")
 #plt.yscale("log")
 plt.axvline(0,color="red")
-cb=plt.colorbar()
+
 cb.set_label("SNR (dB)")
 plt.title("Sodankylä-Skibotn oblique path")
 plt.xlabel("Time after atmospheric entry (s)")

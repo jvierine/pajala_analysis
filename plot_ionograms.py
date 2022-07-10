@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.rcParams.update({"font.size":16})
 import h5py
 import glob
 import numpy as n
@@ -60,7 +62,10 @@ def gather_ionograms(rmin=0,
         S0[n.isnan(S0)]=1e-3
         S[fi,:,:]=S0[ridx,:]
         
-        plt.pcolormesh(freqs/1e6,ranges,10.0*n.log10(S0[ridx,:]),vmin=0,vmax=20.0)
+        fig = plt.figure(figsize=(8,6.4))        
+        plt.pcolormesh(freqs/1e6,ranges,10.0*n.log10(S0[ridx,:]),vmin=0,vmax=20.0,cmap="gray")
+        cb=plt.colorbar()
+        cb.set_label("SNR (dB)")
         plt.title(datetime.utcfromtimestamp(tnow).strftime('%Y-%m-%d %H:%M:%S'))
 
         plt.xlabel("Frequency (MHz)")
@@ -78,9 +83,17 @@ def gather_ionograms(rmin=0,
     ho["freqs"]=freqs/1e6
     ho.close()
 
+    
 if __name__ == "__main__":
+    
     gather_ionograms(rmin=400,
                      rmax=550,
                      t0=1607084000.0,
                      t1=1607095800.0)
-
+    
+   # h=h5py.File("oblique_data/sod_to_ski.h5","r")
+    #S=h["SNR"][()]
+   # print(S.shape)
+#    plt.colorbar()
+ #   plt.show()
+   # h.close()
