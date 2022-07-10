@@ -2,7 +2,7 @@ import h5py
 import numpy as n
 import matplotlib.pyplot as plt
 
-import pyglow
+#import pyglow
 from datetime import datetime
 import scipy.interpolate as si
 
@@ -76,8 +76,8 @@ if True:
     plt.show()
 
 dz=6e3
-rhos=rho_a(n.array([90+dz/1e3,90]))
-rho9=rho_a(n.array([92]))
+#rhos=rho_a(n.array([90+dz/1e3,90]))
+#rho9=rho_a(n.array([92]))
 
 #dr_dz = (rhos[1]-rhos[0])/dz
 #du_dz2 = ((40.0+45.0)/6e3)**2.0 + ((9.0+13.0)/6e3)**2.0
@@ -89,7 +89,7 @@ rho9=rho_a(n.array([92]))
 
 
 
-plt.plot(N_max**2.0/(du_dz/1e3)**2.0,hgt,".")
-plt.ylabel("Height (km)")
-plt.xlabel("Richardson number (10x)")
-plt.show()
+#plt.plot(N_max**2.0/(du_dz/1e3)**2.0,hgt,".")
+#plt.ylabel("Height (km)")
+#plt.xlabel("Richardson number (10x)")
+#plt.show()
