@@ -5,8 +5,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import scipy.optimize as so
 import radiant_est
 import scam
+import jcoord
 
-import OD_and_prop
+#import OD_and_prop
 
 def get_v0(t,p):
     """
@@ -90,7 +91,7 @@ def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
 
 #            s+=n.sum((1.0/(2.0*pstd**2.0))*n.abs(m[:,i]-p[:,i])**2.0)
 #            s+=n.sum(n.abs(m[:,i]-p[:,i])**2.0)            
-        print(s)
+#        print(s)
         return(s)
     
     vn0=n.linalg.norm(v_est)
@@ -129,7 +130,7 @@ def fit_model(t,p,v_est,p_est,ecef_cov,hg,unix_t0,use_acc=True):
 #    print(Sigmap)
     print(par_std)
     
-    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.15,0.15,0.15,0.002,0.002],n_iter=10000,thin=100,debug=False)
+    chain=scam.scam(ss,xhat,n_par=8,step=[0.001,0.001,0.001,0.15,0.15,0.15,0.002,0.002],n_iter=10000,thin=1000,debug=False)
     mp=n.mean(chain,axis=0)
     
     plt.plot(chain[:,1])
@@ -257,6 +258,27 @@ if __name__ == "__main__":
 
     ecef_samples=n.copy(h[("ecef_samples")])
 
+    print(ecef_samples.shape)
+    hgtm=n.zeros(ecef_samples.shape[1])
+    hgtstd=n.zeros(ecef_samples.shape[1])    
+    for i in range(ecef_samples.shape[1]):
+        hgts=[]
+        for j in range(ecef_samples.shape[0]):
+            llh=jcoord.ecef2geodetic(ecef_samples[j,i,0],ecef_samples[j,i,1],ecef_samples[j,i,2])
+            hgts.append(llh[2])
+#            print(llh[2])
+        hgtm[i]=n.mean(hgts)
+        hgtstd[i]=n.std(hgts)        
+        print("%f %f"%(hgtm[i]/1e3,hgtstd[i]/1e3))
+    
+    
+#    print(a.shape)
+ #   for i in range(109):
+  #      plt.plot(n.repeat(i,300),ecef_samples[:,i,2],".")
+  #  plt.show()
+#    plt.plot(ecef_samples[0,:,1],".")
+ #   plt.plot(ecef_samples[0,:,2],".")
+#    plt.show()
     ecef_covs=[]
     # estimate position error covariance
     for i in range(ecef_samples.shape[1]):
@@ -269,14 +291,50 @@ if __name__ == "__main__":
 
 #    plt.plot(hg,".")
  #   plt.show()
+
+
     
     # use a simple linear fit to get
     # initial velocity estimate
     xhat,A,p0,v0=get_v0(t,ecef)
-    print(v0)
+
+    # figure out the entry angle with respect to zenith
+    llh=jcoord.ecef2geodetic(p0[0], p0[1], p0[2])
+    print(llh)
+    p1=jcoord.geodetic2ecef(llh[0],llh[1],llh[2]+10)
+
+    zenith_v=p1-p0
+    zenith_v=zenith_v/n.linalg.norm(zenith_v)
+
+    vunit=v0/n.linalg.norm(v0)
+    print("zenith angle: %1.3f (deg)\n"%(180*n.arccos(n.dot(vunit,zenith_v))/n.pi-90.0))
+#    exit(0)
+
+    # what is the zenith angle
+ #   print(v0)
+
     # estimate radiant based on initial position and
     # velocity
+    # 
     re0 = radiant_est.get_radiant(p0,t[0],v0/n.linalg.norm(v0))
+    
+
+    state,state_cov,radec,radec_cov,v0,v0_std,vels,ct,dp=fit_model(t,ecef,v0,p0,ecef_covs,hg,t[0])
+
+#        return(n.mean(ecef_states,axis=0),
+ #          n.cov(n.transpose(ecef_states)),
+  #         n.mean(radecs,axis=0),
+   #        n.cov(n.transpose(radecs)),
+    #       n.mean(vel_0s),
+     #      n.std(vel_0s),
+      #     chain_vels,
+       #    t,
+        #   dec_pars)
+
+
+#    plt.plot(vels,".")
+#    plt.show()
+    
     
     # Estimate variance of ITRS position measurements based on
     # residuals of initial fit
@@ -285,7 +343,7 @@ if __name__ == "__main__":
     # non-linear fit with a first order atmospheric 
     # drag model.
     
-    state,state_cov,radec,radec_cov,v0,v0_std,vels,ct,dp=fit_model(t,ecef,v0,p0,ecef_covs,hg,t[0])
+
     
 #    print("v0: %1.2f +/- %1.2f\nvx,vy,vz: %1.2f,%1.2f,%1.2f +/- %1.2f,%1.2f,%1.2f\nra,dec: %1.2f,%1.2f +/- %1.2f,%1.2f"%(rv0,rv0s,v[0],v[1],v[2],vs[0],vs[1],vs[2],ra,dec,ras,decs))
 
@@ -295,6 +353,9 @@ if __name__ == "__main__":
     ho["vels"]=vels
     ho["t"]=ct
     ho["h_km"]=hg
+    ho["h_mean_km"]=hgtm
+    ho["h_std_km"]=hgtstd
+    # deceleration parameters obtained using mcmc
     ho["dp"]=dp    
     ho.close()
     
